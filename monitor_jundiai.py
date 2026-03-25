@@ -81,9 +81,9 @@ def main():
         print("Nenhuma edição nova encontrada.")
         return
 
-    print(f"{len(novas)} edição(ões) nova(s) encontrada(s).")
+    print(f"{len(novas_edicoes)} edição(ões) nova(s) encontrada(s).")
 
-    for edicao in novas:
+    for edicao in novas_edicoes:
         print(f"  → Verificando edição {edicao['numero']}: {edicao['link']}")
         encontrado, termo = checar_conteudo(edicao["link"])
 
