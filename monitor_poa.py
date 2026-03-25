@@ -90,11 +90,9 @@ def main():
 
     for edicao in novas:
         msg = (
-            f"📰 *Nova edição — Diário Oficial de Poá*\n\n"
-            f"📋 Edição nº {edicao['numero']}\n"
-            f"🔗 PDF: {edicao['link']}\n\n"
-            f"Verifique se contém o PL 128/2026 "
-            f"(válvulas de retenção — SABESP/hidrômetros)."
+            f"🗞 Nova edição — Diário Oficial de Poá\n"
+            f"Edição nº {edicao['numero']}\n"
+            f"{edicao['link']}"
         )
         enviar_whatsapp(msg)
 
