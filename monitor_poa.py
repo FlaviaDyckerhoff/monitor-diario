@@ -9,7 +9,7 @@ TWILIO_FROM        = "whatsapp:+14155238886"
 TWILIO_TO          = os.environ["TWILIO_TO"]
 
 URL_DIARIO              = "https://poa.sp.gov.br/diario-oficial/"
-ULTIMA_EDICAO_CONHECIDA = 1021
+ULTIMA_EDICAO_CONHECIDA = 1022
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
