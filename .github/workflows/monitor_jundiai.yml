@@ -2,12 +2,14 @@ name: Monitor Diário Oficial Jundiaí
 
 on:
   schedule:
-    - cron: '0 * * * *'   # toda hora, no minuto 0
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
   monitorar:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout do repositório
@@ -26,4 +28,6 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_TO:          ${{ secrets.TWILIO_TO }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:        ${{ github.repository }}
         run: python monitor_jundiai.py
