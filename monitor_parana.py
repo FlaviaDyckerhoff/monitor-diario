@@ -5,8 +5,11 @@ import base64
 import smtplib
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+BRASILIA = ZoneInfo("America/Sao_Paulo")
 
 GMAIL_USER        = os.environ["GMAIL_USER"]
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
@@ -146,7 +149,8 @@ def enviar_email(edicao):
 
 
 def main():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Verificando Diario Oficial Executivo do Parana...")
+    agora = datetime.now(BRASILIA)
+    print(f"[{agora.strftime('%Y-%m-%d %H:%M')} BRT] Verificando Diario Oficial Executivo do Parana...")
 
     ultima_edicao, sha = ler_estado()
 
