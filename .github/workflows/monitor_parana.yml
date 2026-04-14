@@ -2,7 +2,10 @@ name: Monitor Diário Oficial Executivo Paraná
 
 on:
   schedule:
-    - cron: '15 11,20 * * *'
+    - cron: '15 11 * * 1-5'   # 08:15 BRT
+    - cron: '15 14 * * 1-5'   # 11:15 BRT
+    - cron: '15 17 * * 1-5'   # 14:15 BRT
+    - cron: '15 20 * * 1-5'   # 17:15 BRT
   workflow_dispatch:
 
 jobs:
@@ -25,6 +28,9 @@ jobs:
 
       - name: Executar monitor
         env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_TO:          ${{ secrets.TWILIO_TO }}
           GMAIL_USER:         ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           EMAIL_TO:           ${{ secrets.EMAIL_TO }}
