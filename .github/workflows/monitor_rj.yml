@@ -1,0 +1,37 @@
+name: Monitor Diário Oficial RJ
+
+on:
+  schedule:
+    - cron: '0 11 * * 1-5'   # 08:00 BRT — primeira verificacao do dia (publicacao principal)
+    - cron: '0 14 * * 1-5'   # 11:00 BRT
+    - cron: '0 17 * * 1-5'   # 14:00 BRT
+    - cron: '0 20 * * 1-5'   # 17:00 BRT
+    - cron: '0 22 * * 1-5'   # 19:00 BRT
+  workflow_dispatch:
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install requests
+
+      - name: Executar monitor
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_TO:          ${{ secrets.TWILIO_TO }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:        ${{ github.repository }}
+        run: python monitor_rj.py
