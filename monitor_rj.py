@@ -11,10 +11,10 @@ from email.mime.multipart import MIMEMultipart
 
 load_dotenv("/opt/monitor-diario/.env")
 
-TWILIO_ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
-TWILIO_AUTH_TOKEN  = os.environ["TWILIO_AUTH_TOKEN"]
-TWILIO_FROM        = "whatsapp:+14155238886"
-TWILIO_TO          = os.environ["TWILIO_TO"]
+# TWILIO_ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
+# TWILIO_AUTH_TOKEN  = os.environ["TWILIO_AUTH_TOKEN"]
+# TWILIO_FROM        = "whatsapp:+14155238886"
+# TWILIO_TO          = os.environ["TWILIO_TO"]
 GMAIL_USER         = os.environ["GMAIL_USER"]
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 EMAIL_TO           = os.environ["EMAIL_TO"]
@@ -33,9 +33,8 @@ def data_para_base64(data_str):
     return base64.b64encode(data_str.encode("utf-8")).decode("utf-8")
 
 def chave_caderno(nome, extra, session):
-    """Cria chave única para cada caderno, diferenciando múltiplas extras."""
     if extra:
-        return f"{nome} EXTRA ({session[-8:]})"  # últimos 8 chars do token
+        return f"{nome} EXTRA ({session[-8:]})"
     return nome
 
 def ler_estado():
@@ -78,13 +77,8 @@ def buscar_cadernos(data_str):
     return cadernos
 
 def enviar_whatsapp(mensagem):
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
-    payload = {"From": TWILIO_FROM, "To": TWILIO_TO, "Body": mensagem}
-    resp = requests.post(url, data=payload, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
-    if resp.status_code == 201:
-        print("WhatsApp enviado com sucesso.")
-    else:
-        print(f"Erro Twilio: {resp.status_code} - {resp.text}")
+    print("WhatsApp DESABILITADO (limite Twilio atingido)")
+    return
 
 def enviar_email(caderno, link):
     prefixo = "Edicao EXTRA" if caderno["extra"] else "Nova edicao"
@@ -93,7 +87,7 @@ def enviar_email(caderno, link):
         f"{prefixo} do Diario Oficial do Rio de Janeiro publicada.\n\n"
         f"Caderno: {caderno['nome']}\n\n"
         f"Acesse:\n{link}\n\n"
-        f"---\nMonitor automatico - VPS"
+        f"---\nMonitor automatico - VPS (WhatsApp temporariamente desabilitado)"
     )
     msg = MIMEMultipart()
     msg["From"]    = GMAIL_USER
@@ -119,7 +113,6 @@ def processar_cadernos(cadernos, cadernos_conhecidos, data_str):
         link = f"https://www.ioerj.com.br/portal/modules/conteudoonline/mostra_edicao.php?session={caderno['session']}"
         prefixo = "Edicao EXTRA" if caderno["extra"] else "Nova edicao"
         
-        # Se for do dia anterior, marcar na mensagem
         hoje = datetime.now().strftime("%Y%m%d")
         if data_str != hoje:
             ontem_formatado = datetime.strptime(data_str, "%Y%m%d").strftime("%d/%m/%Y")
@@ -138,7 +131,6 @@ def main():
 
     estado = ler_estado()
 
-    # Se mudou o dia, fazer checagem final do dia anterior ANTES de zerar
     if estado.get("data") != hoje and estado.get("data"):
         ontem = estado.get("data")
         cadernos_conhecidos_ontem = set(estado.get("cadernos", []))
@@ -154,7 +146,6 @@ def main():
         except Exception as e:
             print(f"Erro ao verificar dia anterior: {e}")
         
-        # Agora zera o estado para o dia atual
         estado = {"data": hoje, "cadernos": []}
         print(f"Estado zerado para o novo dia ({hoje}).")
     
@@ -168,7 +159,6 @@ def main():
 
     if not cadernos_hoje:
         print("Nenhum caderno encontrado para hoje.")
-        # Salva estado mesmo sem cadernos para não perder a data
         salvar_estado({"data": hoje, "cadernos": list(cadernos_conhecidos_hoje)})
         return
 
@@ -177,7 +167,6 @@ def main():
     if not novos_hoje:
         print("Nenhum caderno novo para hoje.")
 
-    # Salva estado final com todos os cadernos conhecidos de hoje
     todas_chaves = cadernos_conhecidos_hoje | {c["chave"] for c in novos_hoje}
     salvar_estado({"data": hoje, "cadernos": list(todas_chaves)})
 
