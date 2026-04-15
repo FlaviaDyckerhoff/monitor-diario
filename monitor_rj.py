@@ -4,7 +4,7 @@ import json
 import base64
 import smtplib
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -57,6 +57,7 @@ def buscar_cadernos(data_str):
     resp.raise_for_status()
     texto = resp.text
     print(f"Pagina carregada: {len(texto)} caracteres")
+    
     padrao_li = re.compile(
         r'<li>\s*<a href="mostra_edicao\.php\?session=([^"]+)"[^>]*>([^<]+)</a>\s*'
         r'(?:<span[^>]*>([^<]*)</span>)?',
@@ -104,35 +105,79 @@ def enviar_email(caderno, link):
     except Exception as e:
         print(f"Erro ao enviar e-mail: {e}")
 
-def main():
-    hoje = datetime.now().strftime("%Y%m%d")
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Verificando Diario Oficial do RJ...")
-    estado = ler_estado()
-    if estado.get("data") != hoje:
-        print(f"Novo dia detectado ({hoje}). Zerando estado.")
-        estado = {"data": hoje, "cadernos": []}
-    cadernos_conhecidos = set(estado.get("cadernos", []))
-    try:
-        cadernos = buscar_cadernos(hoje)
-    except Exception as e:
-        print(f"Erro ao acessar o site: {e}")
-        return
-    if not cadernos:
-        print("Nenhum caderno encontrado.")
-        return
+def processar_cadernos(cadernos, cadernos_conhecidos, data_str):
     novos = [c for c in cadernos if c["chave"] not in cadernos_conhecidos]
     if not novos:
-        print("Nenhum caderno novo.")
-        return
-    print(f"{len(novos)} caderno(s) novo(s).")
+        return []
+    
+    print(f"{len(novos)} caderno(s) novo(s) encontrado(s) para {data_str}.")
+    
     for caderno in novos:
         link = f"https://www.ioerj.com.br/portal/modules/conteudoonline/mostra_edicao.php?session={caderno['session']}"
         prefixo = "Edicao EXTRA" if caderno["extra"] else "Nova edicao"
-        msg = f"{prefixo} - Diario Oficial do RJ\nCaderno: {caderno['nome']}\n{link}"
+        
+        # Se for do dia anterior, marcar na mensagem
+        hoje = datetime.now().strftime("%Y%m%d")
+        if data_str != hoje:
+            ontem_formatado = datetime.strptime(data_str, "%Y%m%d").strftime("%d/%m/%Y")
+            msg = f"{prefixo} - Diario Oficial do RJ [RETROATIVO {ontem_formatado}]\nCaderno: {caderno['nome']}\n{link}"
+        else:
+            msg = f"{prefixo} - Diario Oficial do RJ\nCaderno: {caderno['nome']}\n{link}"
+        
         enviar_whatsapp(msg)
         enviar_email(caderno, link)
-    todas = list(cadernos_conhecidos | {c["chave"] for c in novos})
-    salvar_estado({"data": hoje, "cadernos": todas})
+    
+    return novos
+
+def main():
+    hoje = datetime.now().strftime("%Y%m%d")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Verificando Diario Oficial do RJ...")
+
+    estado = ler_estado()
+    cadernos_conhecidos_hoje = set()
+
+    # Se mudou o dia, fazer checagem final do dia anterior ANTES de zerar
+    if estado.get("data") != hoje and estado.get("data"):
+        ontem = estado.get("data")
+        cadernos_conhecidos_ontem = set(estado.get("cadernos", []))
+        
+        print(f"Novo dia detectado ({hoje}). Verificando se perdeu algo do dia anterior ({ontem})...")
+        
+        try:
+            cadernos_ontem = buscar_cadernos(ontem)
+            if cadernos_ontem:
+                novos_ontem = processar_cadernos(cadernos_ontem, cadernos_conhecidos_ontem, ontem)
+                if novos_ontem:
+                    print(f"ALERTA: Encontradas {len(novos_ontem)} edicao(oes) extra(s) do dia anterior!")
+        except Exception as e:
+            print(f"Erro ao verificar dia anterior: {e}")
+        
+        # Agora zera o estado para o dia atual
+        estado = {"data": hoje, "cadernos": []}
+        print(f"Estado zerado para o novo dia ({hoje}).")
+    
+    cadernos_conhecidos_hoje = set(estado.get("cadernos", []))
+
+    try:
+        cadernos_hoje = buscar_cadernos(hoje)
+    except Exception as e:
+        print(f"Erro ao acessar o site: {e}")
+        return
+
+    if not cadernos_hoje:
+        print("Nenhum caderno encontrado para hoje.")
+        # Salva estado mesmo sem cadernos para não perder a data
+        salvar_estado({"data": hoje, "cadernos": list(cadernos_conhecidos_hoje)})
+        return
+
+    novos_hoje = processar_cadernos(cadernos_hoje, cadernos_conhecidos_hoje, hoje)
+    
+    if not novos_hoje:
+        print("Nenhum caderno novo para hoje.")
+
+    # Salva estado final com todos os cadernos conhecidos de hoje
+    todas_chaves = cadernos_conhecidos_hoje | {c["chave"] for c in novos_hoje}
+    salvar_estado({"data": hoje, "cadernos": list(todas_chaves)})
 
 if __name__ == "__main__":
     main()
