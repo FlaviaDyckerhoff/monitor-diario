@@ -32,8 +32,11 @@ HEADERS_SITE = {
 def data_para_base64(data_str):
     return base64.b64encode(data_str.encode("utf-8")).decode("utf-8")
 
-def chave_caderno(nome, extra):
-    return f"{nome} EXTRA" if extra else nome
+def chave_caderno(nome, extra, session):
+    """Cria chave única para cada caderno, diferenciando múltiplas extras."""
+    if extra:
+        return f"{nome} EXTRA ({session[-8:]})"  # últimos 8 chars do token
+    return nome
 
 def ler_estado():
     if os.path.exists(STATE_FILE):
@@ -68,10 +71,10 @@ def buscar_cadernos(data_str):
         session = match.group(1).strip()
         nome    = match.group(2).strip()
         extra   = bool(match.group(3) and "EXTRA" in match.group(3).upper())
-        chave   = chave_caderno(nome, extra)
+        chave   = chave_caderno(nome, extra, session)
         cadernos.append({"session": session, "nome": nome, "extra": extra, "chave": chave})
         sufixo = " [EDICAO EXTRA]" if extra else ""
-        print(f"  Caderno: {nome}{sufixo}")
+        print(f"  Caderno: {nome}{sufixo} (chave: {chave})")
     return cadernos
 
 def enviar_whatsapp(mensagem):
@@ -134,7 +137,6 @@ def main():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Verificando Diario Oficial do RJ...")
 
     estado = ler_estado()
-    cadernos_conhecidos_hoje = set()
 
     # Se mudou o dia, fazer checagem final do dia anterior ANTES de zerar
     if estado.get("data") != hoje and estado.get("data"):
